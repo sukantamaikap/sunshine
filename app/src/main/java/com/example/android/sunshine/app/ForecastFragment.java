@@ -1,5 +1,6 @@
 package com.example.android.sunshine.app;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -12,8 +13,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -62,6 +65,15 @@ public class ForecastFragment extends Fragment {
 
         this.mListView = (ListView) rootView.findViewById(R.id.listview_forcast);
         this.mListView.setAdapter(this.mForecastArrayAdapter);
+        this.mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final String forecast = ForecastFragment.this.mForecastArrayAdapter.getItem(position);
+                final Intent forecastIntent = new Intent(ForecastFragment.this.getActivity(), DetailActivity.class);
+                forecastIntent.putExtra(Intent.EXTRA_TEXT, forecast);
+                ForecastFragment.this.getActivity().startActivity(forecastIntent);
+            }
+        });
         this.setHasOptionsMenu(true);
 
         return rootView;
