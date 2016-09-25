@@ -1,9 +1,11 @@
 package com.example.android.sunshine.app;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -16,7 +18,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,8 +31,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * A placeholder fragment containing weather update view.
@@ -50,18 +49,10 @@ public class ForecastFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-        final List<String> fakeWeatherData = new ArrayList<>(Arrays.asList("Today-Sunny- 32/21",
-                "Tomorrow-Cloudy- 28/24",
-                "Wednesday-Cloudy- 29/25",
-                "Thursday - Thunderstorm - 25/19",
-                "Friday - Sunny - 29/20",
-                "Saturday - Sunny - 28/20",
-                "Sunday - Sunny - 29/22"));
-
         this.mForecastArrayAdapter = new ArrayAdapter<String>(this.getActivity(),
                 R.layout.list_item_forecast,
                 R.id.list_item_forecast_textView,
-                fakeWeatherData);
+                new ArrayList<String>());
 
         this.mListView = (ListView) rootView.findViewById(R.id.listview_forcast);
         this.mListView.setAdapter(this.mForecastArrayAdapter);
@@ -80,6 +71,12 @@ public class ForecastFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        this.fetchWeather();
+    }
+
+    @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.forecast_fragment, menu);
     }
@@ -87,10 +84,16 @@ public class ForecastFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_refresh) {
-            new FetchWeatherTask().execute("94043");
+            fetchWeather();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void fetchWeather() {
+        final SharedPreferences defaultLocationPreference = PreferenceManager.getDefaultSharedPreferences(ForecastFragment.this.getActivity());
+        final String location = defaultLocationPreference.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        new FetchWeatherTask().execute(location);
     }
 
     private class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
@@ -181,7 +184,16 @@ public class ForecastFragment extends Fragment {
         /**
          * Prepare the weather high/lows for presentation.
          */
-        private String formatHighLows(double high, double low) {
+        private String formatHighLows(double high,
+                                      double low,
+                                      final String unitType) {
+            if (unitType.equals(ForecastFragment.this.getString(R.string.pref_units_imperial))) {
+                high = high*1.8 + 32;
+                low = low*1.8 + 32;
+            } else if (!unitType.equals(ForecastFragment.this.getString(R.string.pref_units_imperial))) {
+                Log.e(TAG, "Invalid unit type : " + unitType);
+            }
+
             // For presentation, assume the user doesn't care about tenths of a degree.
             long roundedHigh = Math.round(high);
             long roundedLow = Math.round(low);
@@ -256,7 +268,10 @@ public class ForecastFragment extends Fragment {
                 double high = temperatureObject.getDouble(OWM_MAX);
                 double low = temperatureObject.getDouble(OWM_MIN);
 
-                highAndLow = formatHighLows(high, low);
+                SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                String unitType = sharedPrefs.getString(getString(R.string.pref_units_key), getString(R.string.pref_units_metric));
+
+                highAndLow = formatHighLows(high, low, unitType);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
             }
 
