@@ -126,7 +126,7 @@ public class TestDb extends AndroidTestCase {
 
         // Insert ContentValues into database and get a row ID back
         long id = db.insert(WeatherContract.LocationEntry.TABLE_NAME, null, entry);
-        Assert.assertTrue("Data insertion was not successful", id != -1);
+        Assert.assertTrue("Data insertion was not successful", id != -1L);
 
         // Query the database and receive a Cursor back
         final Cursor cursor = db.query(WeatherContract.LocationEntry.TABLE_NAME, null, null, null, null, null, null, null);
@@ -164,20 +164,40 @@ public class TestDb extends AndroidTestCase {
         SQLiteDatabase db = new WeatherDbHelper(this.mContext).getWritableDatabase();
         assertEquals(true, db.isOpen());
 
+        long locationRowId = insertLocation();
+
+        // Make sure we have a valid row ID.
+        assertFalse("Error: Location Not Inserted Correctly", locationRowId == -1L);
+
         // Create ContentValues of what you want to insert
         // (you can use the createWeatherValues TestUtilities function if you wish)
+        ContentValues weatherValues = TestUtilities.createWeatherValues(locationRowId);
+
+        long weatherRowId = db.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, weatherValues);
+        assertTrue(weatherRowId != -1);
 
         // Insert ContentValues into database and get a row ID back
 
         // Query the database and receive a Cursor back
+        Cursor weatherCursor = db.query(WeatherContract.WeatherEntry.TABLE_NAME,  // Table to Query
+                null, // leaving "columns" null just returns all the columns.
+                null, // cols for "where" clause
+                null, // values for "where" clause
+                null, // columns to group by
+                null, // columns to filter by row groups
+                null  // sort order
+                );
 
         // Move the cursor to a valid database row
+        assertTrue( "Error: No Records returned from location query", weatherCursor.moveToFirst() );
 
         // Validate data in resulting Cursor with the original ContentValues
         // (you can use the validateCurrentRecord function in TestUtilities to validate the
         // query if you like)
+        TestUtilities.validateCurrentRecord("testInsertReadDb weatherEntry failed to validate", weatherCursor, weatherValues);
 
         // Finally, close the cursor and database
+        weatherCursor.close();
     }
 
 
