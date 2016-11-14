@@ -18,15 +18,11 @@ package com.example.android.sunshine.app;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.database.Cursor;
-import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.preference.PreferenceManager;
 import android.text.format.Time;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.data.WeatherContract.WeatherEntry;
@@ -41,13 +37,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Vector;
 
 public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
-    private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
+    private final String TAG = FetchWeatherTask.class.getSimpleName();
 
     private final Context mContext;
 
@@ -111,6 +105,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
     private void getWeatherDataFromJson(String forecastJsonStr,
                                             String locationSetting)
             throws JSONException {
+        Log.d(TAG, "Weather data received as json string : " + forecastJsonStr + "for location setting : " + locationSetting);
 
         // Now we have a String representing the complete forecast in JSON Format.
         // Fortunately parsing is easy:  constructor takes the JSON string and converts it
@@ -231,15 +226,20 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
                 cVVector.add(weatherValues);
             }
 
+            int inserted = 0;
             // add to database
             if ( cVVector.size() > 0 ) {
+                Log.d(TAG, "Weather data sent size in elements : " + cVVector.size());
                 // Student: call bulkInsert to add the weatherEntries to the database here
-                ContentValues[] cvArray = new ContentValues[cVVector.size()];
+                final ContentValues[] cvArray = new ContentValues[cVVector.size()];
                 cVVector.toArray(cvArray);
+                inserted = mContext.getContentResolver().bulkInsert(WeatherEntry.CONTENT_URI, cvArray);
             }
 
+            Log.d(TAG, "FetchWeatherTask Complete. " + inserted + " Inserted");
+
         } catch (JSONException e) {
-            Log.e(LOG_TAG, e.getMessage(), e);
+            Log.e(TAG, e.getMessage(), e);
             e.printStackTrace();
         }
     }
@@ -286,6 +286,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
                     .build();
 
             URL url = new URL(builtUri.toString());
+            Log.d(TAG, "Async task trying to establish connection to url : " + builtUri.toString());
 
             // Create the request to OpenWeatherMap, and open the connection
             urlConnection = (HttpURLConnection) url.openConnection();
@@ -316,12 +317,12 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
             forecastJsonStr = buffer.toString();
             getWeatherDataFromJson(forecastJsonStr, locationQuery);
         } catch (IOException e) {
-            Log.e(LOG_TAG, "Error ", e);
+            Log.e(TAG, "ErrorgetWeatherDataFromJson ", e);
             // If the code didn't successfully get the weather data, there's no point in attempting
             // to parse it.
             return null;
         } catch (JSONException e) {
-            Log.e(LOG_TAG, e.getMessage(), e);
+            Log.e(TAG, e.getMessage(), e);
             e.printStackTrace();
         } finally {
             if (urlConnection != null) {
@@ -331,12 +332,11 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
                 try {
                     reader.close();
                 } catch (final IOException e) {
-                    Log.e(LOG_TAG, "Error closing stream", e);
+                    Log.e(TAG, "Error closing stream", e);
                 }
             }
         }
 
-        // This will only happen if there was an error getting or parsing the forecast.
         return null;
     }
 }
